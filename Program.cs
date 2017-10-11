@@ -18,11 +18,11 @@ namespace dirHash
 
                 var xorHashesConten = CalcHash(path);
 
-                Console.WriteLine(xorHashesConten.ToLine());
+                Console.WriteLine("MD5" + xorHashesConten.ToLine());
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
             }
         }
 
@@ -43,17 +43,30 @@ namespace dirHash
             var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
 
             var hashesContent =
-                files.AsParallel().Select(f => new MD5CryptoServiceProvider().ComputeHash(File.ReadAllBytes(f)));
+                files.AsParallel().Select(HashFromContent);
             var xorHashesContent = hashesContent.XOR();
 
-            var relPathes = files.AsParallel().Select(item => new Uri(path).MakeRelativeUri(new Uri(item)).ToString());
+            var relPathes = files.AsParallel().Select(item => CalcRelativePath(path, item));
             var xorPathHashes = relPathes
-                .Select(p => Encoding.UTF8.GetBytes(p))
-                .Select(p => new MD5CryptoServiceProvider().ComputeHash(p))
+                .Select(HashFromPath)
                 .XOR();
 
-
             return xorHashesContent.XOR(xorPathHashes);
+        }
+
+        private static string CalcRelativePath(string root, string path)
+        {
+            return new Uri(root).MakeRelativeUri(new Uri(path)).ToString();
+        }
+
+        private static byte[] HashFromPath(string path)
+        {
+            return Encoding.UTF8.GetBytes(path).CalcHash();
+        }
+
+        private static byte[] HashFromContent(string file)
+        {
+            return File.ReadAllBytes(file).CalcHash();
         }
     }
 }
