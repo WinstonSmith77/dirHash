@@ -14,11 +14,12 @@ namespace dirHash
         {
             try
             {
-                var path = PreparePath(args);
-
+                var start = DateTime.Now;
+                var path = PrepareRoot(args);
                 var xorHashesConten = CalcHash(path);
 
                 Console.WriteLine("MD5" + xorHashesConten.ToLine());
+                Console.WriteLine("Total Seconds " + (DateTime.Now - start).TotalSeconds);
             }
             catch (Exception ex)
             {
@@ -26,7 +27,7 @@ namespace dirHash
             }
         }
 
-        private static string PreparePath(string[] args)
+        private static string PrepareRoot(string[] args)
         {
             var path = args[0];
 
@@ -38,35 +39,37 @@ namespace dirHash
             return path;
         }
 
-        private static byte[] CalcHash(string path)
+        private static byte[] CalcHash(string root)
         {
-            var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-
-            var hashesContent =
-                files.AsParallel().Select(HashFromContent);
-            var xorHashesContent = hashesContent.XOR();
-
-            var relPathes = files.AsParallel().Select(item => CalcRelativePath(path, item));
-            var xorPathHashes = relPathes
-                .Select(HashFromPath)
+            var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
+           
+            var allHashes = files
+                .Select(path => CalcHash(root, path))
                 .XOR();
 
-            return xorHashesContent.XOR(xorPathHashes);
+            return allHashes;
         }
 
-        private static string CalcRelativePath(string root, string path)
+        private static byte[] CalcHash(string root, string path)
         {
-            return new Uri(root).MakeRelativeUri(new Uri(path)).ToString();
-        }
-
-        private static byte[] HashFromPath(string path)
-        {
-            return Encoding.UTF8.GetBytes(path).CalcHash();
+            return HashFromPath(path, root)
+                .XOR(HashFromContent(path));
         }
 
         private static byte[] HashFromContent(string file)
         {
             return File.ReadAllBytes(file).CalcHash();
+        }
+
+        private static byte[] HashFromPath(string path, string root)
+        {
+            var rootPath = CalcRelativePath(root, path);
+            return Encoding.UTF8.GetBytes(rootPath).CalcHash();
+        }
+
+        private static string CalcRelativePath(string root, string path)
+        {
+            return new Uri(root).MakeRelativeUri(new Uri(path)).ToString();
         }
     }
 }
