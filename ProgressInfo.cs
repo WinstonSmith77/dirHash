@@ -26,7 +26,7 @@ namespace dirHash
             _count++;
 
             var percentage = (double) _count / _totalNumberOfItems * 100;
-            var toGo = ((100 - percentage) / percentage * (DateTime.Now - _start).TotalSeconds).ToString("#.");
+            var toGo = ((100 - percentage) / percentage * (DateTime.Now - _start).TotalSeconds).ToString("0.0");
             var toLog =_count + " of " + _totalNumberOfItems + " (" + percentage.ToString("0.00") + "%) " + toGo + " Seconds to go     ";
 
             toLog += new string(' ', Console.WindowWidth - toLog.Length);
