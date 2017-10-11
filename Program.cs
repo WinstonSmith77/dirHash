@@ -25,6 +25,10 @@ namespace dirHash
             {
                 Console.WriteLine(ex);
             }
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Console.ReadLine();
+            }
         }
 
         private static string PrepareRoot(string[] args)
@@ -42,18 +46,22 @@ namespace dirHash
         private static byte[] CalcHash(string root)
         {
             var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
-           
+            var progressInfo = new ProgressInfo(files.Length);
+
             var allHashes = files
-                .Select(path => CalcHash(root, path))
+                .Select(path => CalcHash(root, path, () => progressInfo.Increment()))
                 .XOR();
 
             return allHashes;
         }
 
-        private static byte[] CalcHash(string root, string path)
+        private static byte[] CalcHash(string root, string path, Action call)
         {
-            return HashFromPath(path, root)
+            var result = HashFromPath(path, root)
                 .XOR(HashFromContent(path));
+
+            call();
+            return result;
         }
 
         private static byte[] HashFromContent(string file)
