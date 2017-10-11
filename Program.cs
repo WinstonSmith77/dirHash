@@ -46,21 +46,27 @@ namespace dirHash
         private static byte[] CalcHash(string root)
         {
             var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
-            var progressInfo = new ProgressInfo(files.Length);
+            var dir = Directory.GetDirectories(root, "*", SearchOption.AllDirectories);
 
-            var allHashes = files
-                .Select(path => CalcHash(root, path, () => progressInfo.Increment()))
+            var progressInfo = new ProgressInfo(files.Length + dir.Length);
+            void Increment() => progressInfo.Increment();
+
+            var allFileHashes = files
+                .Select(path => CalcHash(root, path, Increment))
                 .XOR();
 
-            return allHashes;
+            var allDirHashes = dir
+                .Select(path => HashFromPath(path, root, Increment))
+                .XOR();
+
+            return allFileHashes.XOR(allDirHashes);
         }
 
         private static byte[] CalcHash(string root, string path, Action call)
         {
-            var result = HashFromPath(path, root)
+            var result = HashFromPath(path, root, call)
                 .XOR(HashFromContent(path));
 
-            call();
             return result;
         }
 
@@ -69,10 +75,14 @@ namespace dirHash
             return File.ReadAllBytes(file).CalcHash();
         }
 
-        private static byte[] HashFromPath(string path, string root)
+        private static byte[] HashFromPath(string path, string root, Action call)
         {
             var rootPath = CalcRelativePath(root, path);
-            return Encoding.UTF8.GetBytes(rootPath).CalcHash();
+            var result = Encoding.UTF8.GetBytes(rootPath).CalcHash();
+
+            call();
+
+            return result;
         }
 
         private static string CalcRelativePath(string root, string path)
